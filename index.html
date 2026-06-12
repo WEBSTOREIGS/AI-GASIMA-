@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>AI GASIMA DASHBOARD</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #020203;
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        #bg-video {
+            position: fixed;
+            right: 0;
+            bottom: 0;
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            z-index: -10;
+            object-fit: cover;
+            opacity: 0.35;
+            filter: grayscale(15%) contrast(130%) brightness(80%);
+        }
+
+        .glass-panel {
+            background: rgba(6, 6, 9, 0.90);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            box-shadow: 0 15px 45px 0 rgba(0, 0, 0, 0.9);
+        }
+
+        .chat-container {
+            flex-1: 1 1 0%;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .floating-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            z-index: 50;
+            padding-left: 1rem;
+            padding-right: 1rem;
+            padding-top: 0.75rem;
+            padding-bottom: calc(1.5rem + env(safe-area-inset-bottom)); 
+            background: linear-gradient(to top, rgba(2,2,3,1) 80%, rgba(2,2,3,0) 100%);
+        }
+
+        .neon-glow-red {
+            box-shadow: 0 0 25px rgba(239, 68, 68, 0.65), inset 0 0 10px rgba(239, 68, 68, 0.25);
+        }
+        .neon-text-red {
+            text-shadow: 0 0 10px rgba(239, 68, 68, 0.7), 0 0 20px rgba(239, 68, 68, 0.3);
+        }
+
+        .bar {
+            width: 2px;
+            height: 3px;
+            background-color: #ef4444;
+            animation: bounce 0.5s ease infinite alternate;
+        }
+        .bar:nth-child(2) { animation-delay: 0.1s; }
+        .bar:nth-child(3) { animation-delay: 0.2s; }
+        .bar:nth-child(4) { animation-delay: 0.3s; }
+        @keyframes bounce {
+            from { height: 3px; }
+            to { height: 14px; }
+        }
+
+        .voice-wave {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            height: 20px;
+        }
+        .voice-bar {
+            width: 3px;
+            height: 4px;
+            background-color: #ef4444;
+            border-radius: 99px;
+            animation: wave 0.6s ease-in-out infinite alternate;
+        }
+        .voice-bar:nth-child(2) { animation-delay: 0.15s; height: 8px; }
+        .voice-bar:nth-child(3) { animation-delay: 0.3s; height: 12px; }
+        .voice-bar:nth-child(4) { animation-delay: 0.45s; height: 6px; }
+        @keyframes wave {
+            from { transform: scaleY(1); }
+            to { transform: scaleY(2.5); }
+        }
+    </style>
+</head>
+<body class="text-gray-100 flex flex-col h-screen w-screen justify-between p-0 m-0 relative">
+
+    <video autoplay loop muted playsinline id="bg-video">
+        <source src="ai.mp4" type="video/mp4">
+    </video>
+
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
+    <input type="file" id="galleryInput" accept="image/*" class="hidden">
+    <input type="file" id="fileInput" accept="*/*" class="hidden">
+
+    <header class="glass-panel w-full px-4 py-3 flex items-center justify-between shadow-lg z-50 shrink-0 border-b border-red-500/40 relative">
+        <div class="flex items-center gap-2.5">
+            <div class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping absolute opacity-75"></div>
+            <div class="w-2.5 h-2.5 rounded-full bg-red-500 relative neon-glow-red"></div>
+            <div>
+                <h1 class="text-sm font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-white to-red-400 neon-text-red uppercase">
+                    AI GASIMA
+                </h1>
+                <p class="text-[9px] text-gray-400 font-bold tracking-[0.2em] uppercase opacity-80">by ikiygasima</p>
+            </div>
+        </div>
+        <button id="configBtn" class="text-gray-300 hover:text-red-400 p-1.5 transition-all text-sm flex items-center gap-1.5 active:scale-95 border border-red-500/30 bg-black/60 rounded-xl px-3 shadow-sm">
+            <i class="fa-solid fa-terminal text-xs text-red-500"></i>
+            <span class="text-xs font-bold tracking-wide uppercase">Core API</span>
+        </button>
+    </header>
+
+    <main class="flex-1 w-full flex flex-col overflow-hidden relative">
+        
+        <div id="apiModal" class="absolute inset-0 z-40 flex items-center justify-center p-4 bg-black/95 backdrop-blur-md hidden transition-all">
+            <div class="glass-panel w-full max-w-sm rounded-3xl p-5 shadow-2xl relative border-red-500/40">
+                <div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-red-600 text-white font-black text-[10px] tracking-widest px-3 py-1 rounded-full border border-red-400/50 uppercase shadow-lg">SYSTEM CONFIG</div>
+                <h3 class="text-sm font-black text-red-500 mb-2 flex items-center gap-2 tracking-wider mt-2 uppercase">
+                    <i class="fa-solid fa-sliders text-white"></i> Otorisasi Sandi API
+                </h3>
+                
+                <div class="bg-red-950/40 border border-red-500/30 rounded-xl p-3 mb-4">
+                    <p class="text-[11px] text-red-400 font-bold flex items-center gap-1.5 uppercase mb-1">
+                        <i class="fa-solid fa-triangle-exclamation text-white"></i> Akses Terkunci
+                    </p>
+                    <p class="text-[10px] text-gray-400 mb-2.5">Jika tidak punya API Key, silakan klik tombol di bawah untuk meminta kode akses langsung ke Owner.</p>
+                    <button type="button" id="requestWaBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] py-2.5 rounded-lg flex items-center justify-center gap-1.5 shadow-md uppercase tracking-wider transition-all active:scale-95">
+                        <i class="fa-brands fa-whatsapp text-sm"></i> Minta Akses via WhatsApp
+                    </button>
+                </div>
+
+                <input type="password" id="apiKeyInput" placeholder="Masukkan gsk_..." class="w-full text-xs bg-black/90 border border-red-900/60 rounded-xl p-3 focus:outline-none focus:border-red-500 text-red-400 font-mono">
+                <button id="saveApiBtn" class="w-full mt-4 bg-gradient-to-r from-red-600 via-red-700 to-black text-white font-black text-xs py-3 rounded-xl tracking-wider uppercase">
+                    Suntik Kustom Key
+                </button>
+            </div>
+        </div>
+
+        <div id="voiceOverlayPanel" class="absolute inset-0 bg-black/85 backdrop-blur-sm z-30 flex flex-col items-center justify-center hidden transition-all duration-300">
+            <div class="glass-panel p-6 rounded-3xl border-red-500/40 max-w-xs w-full text-center flex flex-col items-center gap-4">
+                <div class="w-16 h-16 rounded-full bg-red-950/50 border border-red-500/40 flex items-center justify-center animate-pulse">
+                    <i class="fa-solid fa-microphone text-red-500 text-2xl animate-bounce"></i>
+                </div>
+                <div>
+                    <h4 class="text-xs font-black tracking-widest text-red-500 uppercase">Sistem Mendengarkan...</h4>
+                    <p class="text-[10px] text-gray-400 mt-1">Silakan berbicara, suara Anda sedang diproses langsung menjadi kalimat teks secara akurat.</p>
+                </div>
+                <div class="voice-wave mt-1">
+                    <div class="voice-bar"></div><div class="voice-bar"></div><div class="voice-bar"></div><div class="voice-bar"></div>
+                </div>
+                <button type="button" id="stopVoiceRecordBtn" class="mt-2 px-4 py-1.5 bg-red-600/20 border border-red-500/40 rounded-xl text-[10px] font-bold tracking-wider text-red-400 uppercase active:scale-95 transition-all">
+                    Selesai & Kunci Teks
+                </button>
+            </div>
+        </div>
+
+        <div id="chatContainer" class="chat-container px-4 pt-4 pb-52 space-y-4 flex flex-col">
+            <div class="self-start rounded-[24px] p-2 max-w-[88%] text-xs text-gray-200 leading-relaxed relative">
+                <p class="font-black text-red-500 mb-1 tracking-widest flex items-center gap-1.5 uppercase text-[10px] neon-text-red">
+                    <i class="fa-solid fa-fingerprint text-white text-[10px]"></i> AI GASIMA ECOSYSTEM
+                </p>
+                Selamat datang di Core v4.5. Bubble AI sekarang sepenuhnya transparan agar video background tidak terhalang. Musik latar tetap menyala penuh saat mengetik.
+            </div>
+        </div>
+
+        <div id="attachMenu" class="fixed bottom-28 left-4 glass-panel rounded-2xl p-2 flex flex-col gap-1 hidden z-50 border border-red-500/40 shadow-xl w-44">
+            <button id="btnCamera" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs hover:bg-red-950/40 text-left text-gray-200"><i class="fa-solid fa-camera text-red-500 text-sm"></i> <span>Ambil Kamera</span></button>
+            <button id="btnGallery" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs hover:bg-red-950/40 text-left text-gray-200"><i class="fa-solid fa-image text-red-500 text-sm"></i> <span>Galeri Foto</span></button>
+            <button id="btnFile" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs hover:bg-red-950/40 text-left text-gray-200"><i class="fa-solid fa-file-lines text-red-500 text-sm"></i> <span>Dokumen / File</span></button>
+            <div class="h-[1px] bg-red-500/20 w-full my-0.5"></div>
+            <button onclick="window.open('https://www.canva.com', '_blank')" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs hover:bg-red-950/40 text-left text-gray-200"><i class="fa-solid fa-compass-drafting text-blue-400 text-sm"></i> <span>Buka Canva</span></button>
+        </div>
+
+        <div id="audioStatusContainer" class="fixed bottom-28 right-4 glass-panel px-2.5 py-1.5 rounded-xl flex items-center gap-2 border border-red-500/20 text-[9px] font-mono text-red-400 pointer-events-none z-20">
+            <i class="fa-solid fa-music text-red-500"></i> <span id="trackLabel">TRACK: STOPPED</span>
+            <div id="visualizer" class="flex items-end gap-[2px] h-3.5 w-4 hidden"><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+        </div>
+
+        <div id="loadingIndicator" class="fixed bottom-28 left-4 px-3 py-1.5 rounded-lg bg-black/80 border border-red-500/20 flex items-center gap-2 text-xs text-red-500 hidden z-20">
+            <i class="fa-solid fa-circle-notch animate-spin text-white"></i> <span class="neon-text-red uppercase text-[9px]">CORE PROCESSING...</span>
+        </div>
+
+    </main>
+
+    <div class="floating-footer">
+        <div class="w-full max-w-4xl mx-auto flex flex-col gap-2">
+            
+            <div id="pendingContainer" class="glass-panel p-2.5 rounded-xl border border-red-500/30 bg-black/90 hidden flex items-center justify-between max-w-xs ml-2 shadow-lg">
+                <div class="flex items-center gap-2 overflow-hidden">
+                    <div id="pendingIcon" class="text-red-500 text-sm shrink-0"></div>
+                    <span id="pendingName" class="text-[10px] text-gray-300 font-mono truncate max-w-[180px]">filename.jpg</span>
+                </div>
+                <button type="button" id="clearPendingBtn" class="text-gray-500 hover:text-red-500 p-1"><i class="fa-solid fa-xmark text-xs"></i></button>
+            </div>
+
+            <footer class="glass-panel w-full p-2 rounded-[20px] border border-red-500/30 bg-black/95 shadow-[0_12px_40px_rgba(0,0,0,1)] neon-glow-red">
+                <form id="chatForm" class="flex gap-1.5 items-center">
+                    <button type="button" id="attachBtn" class="text-gray-400 hover:text-red-500 w-11 h-11 rounded-xl flex items-center justify-center border border-red-950/80 bg-black/40 shrink-0 transition-all">
+                        <i class="fa-solid fa-paperclip text-sm"></i>
+                    </button>
+
+                    <button type="button" id="voiceInputBtn" class="text-gray-400 hover:text-red-500 w-11 h-11 rounded-xl flex items-center justify-center border border-red-950/80 bg-black/40 shrink-0 transition-all">
+                        <i class="fa-solid fa-microphone text-sm"></i>
+                    </button>
+                    
+                    <div class="flex-1 bg-black/60 rounded-xl border border-red-950/80 flex items-center px-3 focus-within:border-red-500/60 transition-all">
+                        <input type="text" id="userInput" autocomplete="off" placeholder="Kirim perintah atau tanya via file..." class="w-full py-3 text-xs text-white bg-transparent focus:outline-none placeholder-gray-700 font-medium tracking-wide">
+                    </div>
+                    
+                    <button type="submit" class="bg-gradient-to-b from-red-600 to-red-800 text-white w-11 h-11 rounded-xl flex items-center justify-center active:scale-90 transition-all shrink-0">
+                        <i class="fa-solid fa-paper-plane text-xs"></i>
+                    </button>
+                </form>
+            </footer>
+        </div>
+    </div>
+    <script>
+        const configBtn = document.getElementById('configBtn');
+        const apiModal = document.getElementById('apiModal');
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const saveApiBtn = document.getElementById('saveApiBtn');
+        const requestWaBtn = document.getElementById('requestWaBtn');
+        const chatContainer = document.getElementById('chatContainer');
+        const chatForm = document.getElementById('chatForm');
+        const userInput = document.getElementById('userInput');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const trackLabel = document.getElementById('trackLabel');
+        const visualizer = document.getElementById('visualizer');
+
+        const attachBtn = document.getElementById('attachBtn');
+        const attachMenu = document.getElementById('attachMenu');
+        const cameraInput = document.getElementById('cameraInput');
+        const galleryInput = document.getElementById('galleryInput');
+        const fileInput = document.getElementById('fileInput');
+        
+        const pendingContainer = document.getElementById('pendingContainer');
+        const pendingIcon = document.getElementById('pendingIcon');
+        const pendingName = document.getElementById('pendingName');
+        const clearPendingBtn = document.getElementById('clearPendingBtn');
+        
+        const voiceInputBtn = document.getElementById('voiceInputBtn');
+        const voiceOverlayPanel = document.getElementById('voiceOverlayPanel');
+        const stopVoiceRecordBtn = document.getElementById('stopVoiceRecordBtn');
+
+        let apiKey = localStorage.getItem('groq_api_key') || '';
+        if(apiKey) apiKeyInput.value = apiKey;
+
+        let activePendingFile = null;
+        let isSystemSpeaking = false; 
+        let isVoiceRecording = false;
+
+        // 3 PLAYLIST MUSIK MP3
+        const audioTracks = ['1.mp3', '2.mp3', '3.mp3'];
+        let currentTrackIndex = 0;
+        const bgAudio = new Audio(audioTracks[currentTrackIndex]);
+        
+        function updateAudioUI() {
+            trackLabel.innerText = `TRACK: ${audioTracks[currentTrackIndex].toUpperCase()}`;
+            visualizer.classList.remove('hidden');
+        }
+
+        function pauseMusic() {
+            if(!bgAudio.paused) { 
+                bgAudio.pause(); 
+                trackLabel.innerText = "TRACK: MUTED BY CORE"; 
+            }
+        }
+
+        // Musik HANYA berputar jika AI sedang diam dan mikrofon mati
+        function resumeMusic() {
+            if(bgAudio.paused && !isSystemSpeaking && !isVoiceRecording) { 
+                bgAudio.play().then(() => updateAudioUI()).catch(e => {});
+            }
+        }
+
+        // AUTO-POPUP DI AWAL JIKA API KEY MASIH KOSONG
+        window.addEventListener('DOMContentLoaded', () => {
+            if (!apiKey) {
+                apiModal.classList.remove('hidden');
+            }
+        });
+
+        // ACTION WHATSAPP DIRECT LINK KE NOMOR IKIY
+        requestWaBtn.addEventListener('click', () => {
+            const targetPhone = "6287812445345";
+            const msg = encodeURIComponent("Halo Owner AI GASIMA, saya ingin meminta token akses / API Key kustom untuk masuk ke dashboard sistem.");
+            window.open(`https://wa.me/${targetPhone}?text=${msg}`, '_blank');
+        });
+
+        document.addEventListener('click', () => {
+            if (bgAudio.paused && !isSystemSpeaking && !isVoiceRecording) {
+                bgAudio.play().then(() => updateAudioUI()).catch(err => {});
+            }
+        }, { once: true });
+
+        bgAudio.addEventListener('ended', () => {
+            currentTrackIndex = (currentTrackIndex + 1) % audioTracks.length;
+            bgAudio.src = audioTracks[currentTrackIndex];
+            resumeMusic();
+        });
+
+        // Seluruh listener focus/blur dihapus agar musik TETAP BUNYI SAAT mengetik!
+
+        configBtn.addEventListener('click', () => { apiModal.classList.toggle('hidden'); });
+        saveApiBtn.addEventListener('click', () => {
+            if(apiKeyInput.value.trim()) {
+                localStorage.setItem('groq_api_key', apiKeyInput.value.trim());
+                apiKey = apiKeyInput.value.trim();
+                apiModal.classList.add('hidden');
+            }
+        });
+
+        attachBtn.addEventListener('click', (e) => { e.stopPropagation(); attachMenu.classList.toggle('hidden'); });
+        document.addEventListener('click', () => attachMenu.classList.add('hidden'));
+
+        document.getElementById('btnCamera').addEventListener('click', () => cameraInput.click());
+        document.getElementById('btnGallery').addEventListener('click', () => galleryInput.click());
+        document.getElementById('btnFile').addEventListener('click', () => fileInput.click());
+
+        function setPendingFile(file, iconHtml) {
+            activePendingFile = file;
+            pendingIcon.innerHTML = iconHtml;
+            pendingName.innerText = file.name;
+            pendingContainer.classList.remove('hidden');
+        }
+
+        clearPendingBtn.addEventListener('click', () => {
+            activePendingFile = null;
+            pendingContainer.classList.add('hidden');
+            cameraInput.value = ''; galleryInput.value = ''; fileInput.value = '';
+        });
+
+        cameraInput.addEventListener('change', () => { if(cameraInput.files[0]) setPendingFile(cameraInput.files[0], '<i class="fa-solid fa-camera"></i>'); });
+        galleryInput.addEventListener('change', () => { if(galleryInput.files[0]) setPendingFile(galleryInput.files[0], '<i class="fa-solid fa-image"></i>'); });
+        fileInput.addEventListener('change', () => { if(fileInput.files[0]) setPendingFile(fileInput.files[0], '<i class="fa-solid fa-file-zipper"></i>'); });
+
+        // ENGINE SPEECH RECOGNITION TINGKAT TINGGI (SENSITIF & TERSTRUKTUR)
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            
+            recognition.lang = 'id-ID';
+            recognition.continuous = true; 
+            recognition.interimResults = true; 
+
+            let finalTranscript = '';
+
+            voiceInputBtn.addEventListener('click', async () => {
+                try {
+                    await navigator.mediaDevices.getUserMedia({ audio: true });
+                    finalTranscript = '';
+                    isVoiceRecording = true;
+                    pauseMusic(); // Musik di-pause khusus waktu rekam suara
+                    
+                    voiceOverlayPanel.classList.remove('hidden');
+                    recognition.start();
+                } catch (err) {
+                    alert('Akses mikrofon ditolak! Berikan izin mic pada browser HP Anda.');
+                }
+            });
+
+            function terminateSpeechRecognition() {
+                if (isVoiceRecording) {
+                    recognition.stop();
+                    isVoiceRecording = false;
+                    voiceOverlayPanel.classList.add('hidden');
+                    setTimeout(() => { resumeMusic(); }, 400);
+                }
+            }
+
+            stopVoiceRecordBtn.addEventListener('click', () => {
+                terminateSpeechRecognition();
+            });
+
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+                userInput.value = finalTranscript || interimTranscript;
+            };
+
+            recognition.onerror = (e) => {
+                console.error(e.error);
+                terminateSpeechRecognition();
+            };
+
+            recognition.onend = () => {
+                isVoiceRecording = false;
+                voiceOverlayPanel.classList.add('hidden');
+                resumeMusic();
+            };
+        } else {
+            voiceInputBtn.addEventListener('click', () => alert('Speech Recognition tidak disokong browser ini.'));
+        }
+
+        // TEXT-TO-SPEECH (PLAY & STOP DENGAN SAKLAR IKON AUDIO BERUBAH)
+        function speakAIText(text, iconBtn) {
+            if ('speechSynthesis' in window) {
+                if (isSystemSpeaking) {
+                    window.speechSynthesis.cancel();
+                    isSystemSpeaking = false;
+                    iconBtn.innerHTML = '<i class="fa-solid fa-volume-high text-xs"></i>';
+                    resumeMusic();
+                    return;
+                }
+
+                isSystemSpeaking = true;
+                pauseMusic(); // Musik otomatis dijeda saat AI membaca teks
+                iconBtn.innerHTML = '<i class="fa-solid fa-circle-stop text-xs text-red-500 animate-pulse"></i>';
+
+                const cleanText = text.replace(/\*\*| animate-pulse/g, '');
+                const utterance = new SpeechSynthesisUtterance(cleanText);
+                utterance.lang = 'id-ID';
+                utterance.rate = 1.0;
+
+                utterance.onend = () => {
+                    isSystemSpeaking = false;
+                    iconBtn.innerHTML = '<i class="fa-solid fa-volume-high text-xs"></i>';
+                    resumeMusic(); // Jalankan musik kembali saat pembacaan selesai
+                };
+
+                utterance.onerror = () => {
+                    isSystemSpeaking = false;
+                    iconBtn.innerHTML = '<i class="fa-solid fa-volume-high text-xs"></i>';
+                    resumeMusic();
+                };
+
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        // RENDER BUBBLE CHAT ENGINE
+        function appendMessage(text, isUser = false, attachmentData = null) {
+            const wrapper = document.createElement('div');
+            wrapper.className = isUser ? 'flex justify-end w-full' : 'flex justify-start w-full';
+
+            const bubble = document.createElement('div');
+            // MODIFIKASI: Bubble User ber-background gradien solid, Bubble AI 100% transparan murni!
+            bubble.className = isUser 
+                ? 'bg-gradient-to-br from-red-600 via-red-800 to-black text-white rounded-[24px] rounded-tr-none p-4 max-w-[85%] text-xs border border-red-400/30 shadow-lg'
+                : 'bg-transparent text-gray-200 p-2 max-w-[85%] text-xs rounded-none relative';
+
+            if (!isUser) {
+                const flexHead = document.createElement('div');
+                flexHead.className = 'flex justify-between items-center mb-1.5 gap-6';
+                const identity = document.createElement('p');
+                identity.className = 'font-black text-red-500 tracking-wider text-[10px] uppercase';
+                identity.innerHTML = '<i class="fa-solid fa-microchip text-white text-[9px]"></i> Core Gemini-2.5';
+                
+                const voiceBtn = document.createElement('button');
+                voiceBtn.type = 'button';
+                voiceBtn.className = 'text-gray-400 hover:text-red-500 px-1 bg-black/40 border border-red-500/20 rounded-lg w-7 h-7 flex items-center justify-center transition-all';
+                voiceBtn.innerHTML = '<i class="fa-solid fa-volume-high text-xs"></i>';
+                voiceBtn.onclick = () => speakAIText(text, voiceBtn);
+
+                flexHead.appendChild(identity); flexHead.appendChild(voiceBtn);
+                bubble.appendChild(flexHead);
+            }
+
+            if (attachmentData) {
+                const attachNode = document.createElement('div');
+                attachNode.className = 'bg-black/60 border border-red-500/20 rounded-xl p-2 mb-2 font-mono text-[9px] text-red-400 flex items-center gap-1.5';
+                attachNode.innerHTML = `<i class="fa-solid fa-paperclip"></i> Terlampir: ${attachmentData.name}`;
+                bubble.appendChild(attachNode);
+            }
+
+            const messageText = document.createElement('span');
+            messageText.innerText = text;
+            bubble.appendChild(messageText);
+            wrapper.appendChild(bubble);
+            chatContainer.appendChild(wrapper);
+            
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // PIPELINE SUBMIT TRANSMIT DATA
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const prompt = userInput.value.trim();
+            if (!prompt && !activePendingFile) return;
+
+            if (!apiKey) {
+                apiModal.classList.remove('hidden');
+                return;
+            }
+
+            const fileToUpload = activePendingFile;
+            appendMessage(prompt || `Memproses berkas ${fileToUpload.name}...`, true, fileToUpload);
+            
+            userInput.value = '';
+            clearPendingBtn.click();
+            loadingIndicator.classList.remove('hidden');
+
+            try {
+                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: "llama-3.3-70b-versatile",
+                        messages: [
+                            { role: "system", content: "Anda adalah AI asisten pintar bernama AI GASIMA buatan Ikiy yang responsif, ringkas, dan sangat akurat." },
+                            { role: "user", content: prompt + (fileToUpload ? ` (Referensi file: ${fileToUpload.name})` : '') }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 1548
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    appendMessage(data.choices[0].message.content, false);
+                } else {
+                    appendMessage(`Error: ${data.error?.message || 'Gagal memproses data.'}`, false);
+                }
+            } catch (err) {
+                appendMessage('Gagal menghubungi core server Groq.', false);
+            } finally {
+                loadingIndicator.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
